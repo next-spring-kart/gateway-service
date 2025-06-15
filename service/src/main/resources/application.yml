@@ -1,0 +1,153 @@
+spring:
+    application:
+        version: 1.0.0
+        organization:
+            name: next-spring-kart
+        name: gateway-service
+
+    cloud:
+        gateway:
+            server:
+                webflux:
+                    discovery:
+                        locator:
+                            enabled: false # We're using static routes
+                    globalcors:
+                        cors-configurations:
+                            '[/**]':
+                                allowedOriginPatterns: "*"
+                                allowedMethods:
+                                    - GET
+                                    - POST
+                                    - PUT
+                                    - DELETE
+                                    - OPTIONS
+                                    - PATCH
+                                allowedHeaders: "*"
+                                allowCredentials: true
+                                maxAge: 3600
+                    routes:
+                        # User Service Health Check
+                        -   id: user-service-health
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/health
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: false # Health check doesn't need auth
+
+                        # User Service API Routes
+                        -   id: user-service-register
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/register
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: false # Registration doesn't need auth
+
+                        -   id: user-service-login
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/login
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: false # Login doesn't need auth
+
+                        -   id: user-service-validate-token
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/validate-token
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: false # Token validation is public
+
+                        -   id: user-service-logout
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/logout
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: true # Logout needs authentication
+
+                        -   id: user-service-profile
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/profile
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: true # Profile endpoints need auth
+
+                        -   id: user-service-addresses
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/addresses/**
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: true # Address endpoints need auth
+
+                        -   id: user-service-protected
+                            uri: ${USER_SERVICE_URL}
+                            predicates:
+                                - Path=/api/users/**
+                            filters:
+                                -   name: AuthenticationFilter
+                                    args:
+                                        enabled: true # Protected endpoints need auth
+
+                        # Future services can be added here
+                        # - id: product-service
+                        #   uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+                        #   predicates:
+                        #     - Path=/api/products/**
+                        #   filters:
+                        #     - name: AuthenticationFilter
+
+                        # - id: order-service
+                        #   uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+                        #   predicates:
+                        #     - Path=/api/orders/**
+                        #   filters:
+                        #     - name: AuthenticationFilter
+
+
+
+
+
+eureka:
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka/
+    instance:
+        prefer-ip-address: true
+
+jwt:
+    secret: ${JWT_SECRET:mySecretKey12345678901234567890123456789012345}
+    expiration: ${JWT_EXPIRATION:3600000} # Default 1 hour
+
+logging:
+    pattern:
+        console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+    level:
+        org.springframework.cloud.gateway: DEBUG
+        org.springframework.web.cors: DEBUG
+        com.nextspringkart.gateway: DEBUG
+        org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,gateway,routes
+    endpoint:
+        health:
+            show-details: always
+        gateway:
+            access:
+                enabled: true

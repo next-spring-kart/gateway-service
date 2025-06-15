@@ -1,0 +1,23 @@
+spring:
+    config:
+        activate:
+            on-profile: production
+
+logging:
+    level:
+        root: WARN
+        com.ecommerce.gatewayservice: INFO
+        org.springframework.security: WARN
+    file:
+        name: logs/user-service.log
+    pattern:
+        file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+jwt:
+    expiration: 86400000 # 24 hours
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,metrics,prometheus
