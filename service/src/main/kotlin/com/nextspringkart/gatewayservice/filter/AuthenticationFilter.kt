@@ -45,7 +45,7 @@ class AuthenticationFilter(
                     .build()
 
                 chain.filter(mutatedExchange)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 exchange.response.statusCode = HttpStatus.UNAUTHORIZED
                 return@GatewayFilter exchange.response.setComplete()
             }

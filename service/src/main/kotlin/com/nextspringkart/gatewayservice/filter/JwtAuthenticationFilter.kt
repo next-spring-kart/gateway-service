@@ -68,7 +68,7 @@ class JwtAuthenticationFilter(
                 exchange.response.statusCode = HttpStatus.UNAUTHORIZED
                 exchange.response.setComplete()
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             exchange.response.statusCode = HttpStatus.UNAUTHORIZED
             exchange.response.setComplete()
         }
