@@ -31,7 +31,7 @@ spring:
                         -   id: user-service-health
                             uri: ${USER_SERVICE_URL}
                             predicates:
-                                - Path=/health
+                                - Path=/api/users/health
                             filters:
                                 -   name: AuthenticationFilter
                                     args:
@@ -55,15 +55,6 @@ spring:
                                 -   name: AuthenticationFilter
                                     args:
                                         enabled: false # Login doesn't need auth
-
-                        -   id: user-service-validate-token
-                            uri: ${USER_SERVICE_URL}
-                            predicates:
-                                - Path=/api/users/validate-token
-                            filters:
-                                -   name: AuthenticationFilter
-                                    args:
-                                        enabled: false # Token validation is public
 
                         -   id: user-service-logout
                             uri: ${USER_SERVICE_URL}
@@ -116,10 +107,6 @@ spring:
                         #   filters:
                         #     - name: AuthenticationFilter
 
-
-
-
-
 eureka:
     client:
         service-url:
@@ -151,3 +138,10 @@ management:
         gateway:
             access:
                 enabled: true
+
+services:
+    user-service:
+        url: ${USER_SERVICE_URL}
+
+auth:
+    secret: ${GATEWAY_AUTH_SECRET}

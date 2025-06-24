@@ -1,6 +1,6 @@
 package com.nextspringkart.gatewayservice.filter
 
-import com.nextspringkart.gatewayservice.service.JwtService
+import com.nextspringkart.gatewayservice.authentication.AuthenticationProvider
 import org.springframework.cloud.gateway.filter.GatewayFilter
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory
 import org.springframework.http.HttpHeaders
@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class AuthenticationFilter(
-    private val jwtService: JwtService
+    private val authProvider: AuthenticationProvider,
 ) : AbstractGatewayFilterFactory<AuthenticationFilter.Config>() {
 
     data class Config(val message: String = "Authentication Filter")
@@ -27,24 +27,10 @@ class AuthenticationFilter(
             val token = authHeader.substring(7)
 
             try {
-                if (!jwtService.validateToken(token)) {
-                    exchange.response.statusCode = HttpStatus.UNAUTHORIZED
-                    return@GatewayFilter exchange.response.setComplete()
-                }
-
-                val userId = jwtService.extractUserId(token)
-                val username = jwtService.extractUsername(token)
-
-                val mutatedRequest = request.mutate()
-                    .header("X-User-Id", userId.toString())
-                    .header("X-Username", username)
-                    .build()
-
-                val mutatedExchange = exchange.mutate()
-                    .request(mutatedRequest)
-                    .build()
-
-                chain.filter(mutatedExchange)
+                val authResult = authProvider.authenticate(token)
+                if (!authResult.isAuthenticated)
+                    throw IllegalArgumentException("Invalid token")
+                chain.filter(exchange)
             } catch (_: Exception) {
                 exchange.response.statusCode = HttpStatus.UNAUTHORIZED
                 return@GatewayFilter exchange.response.setComplete()

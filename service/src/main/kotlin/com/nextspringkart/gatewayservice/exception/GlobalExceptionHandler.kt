@@ -1,55 +1,76 @@
 package com.nextspringkart.gatewayservice.exception
 
-import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.nextspringkart.gatewayservice.dto.response.ErrorResponse
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler
-import org.springframework.core.io.buffer.DataBufferFactory
 import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.bind.support.WebExchangeBindException
+import org.springframework.web.context.request.WebRequest
 import org.springframework.web.server.ServerWebExchange
-import reactor.core.publisher.Mono
-import java.time.LocalDateTime
-
-data class ErrorResponse(
-    val timestamp: LocalDateTime = LocalDateTime.now(),
-    val status: Int,
-    val error: String,
-    val message: String,
-    val path: String
-)
 
 @RestControllerAdvice
 class GlobalExceptionHandler(
-    private val objectMapper: ObjectMapper,
     private val logger: Logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
-) : ErrorWebExceptionHandler {
+) {
 
-    override fun handle(exchange: ServerWebExchange, ex: Throwable): Mono<Void> {
-        val response = exchange.response
-        val dataBufferFactory: DataBufferFactory = response.bufferFactory()
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidationExceptions(
+        ex: MethodArgumentNotValidException,
+        exchange: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        val validationErrors = ex.bindingResult.fieldErrors
+            .associate { it.field to (it.defaultMessage ?: "Invalid value") }
+
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = HttpStatus.BAD_REQUEST.reasonPhrase,
+            message = "Validation failed",
+            path = exchange.getDescription(false).removePrefix("uri="),
+            validationErrors = validationErrors
+        )
+
+        return ResponseEntity.badRequest().body(errorResponse)
+    }
+
+    @ExceptionHandler(WebExchangeBindException::class)
+    fun handleValidationException(
+        ex: WebExchangeBindException,
+        exchange: ServerWebExchange
+    ): ResponseEntity<ErrorResponse> {
+        val validationErrors = ex.bindingResult.fieldErrors
+            .associate { it.field to (it.defaultMessage ?: "Invalid value") }
+
+        val path = exchange.request.uri.path
+
+        logger.warn("Validation failed for path $path: $validationErrors")
+
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = HttpStatus.BAD_REQUEST.reasonPhrase,
+            message = "Validation failed",
+            path = path,
+            validationErrors = validationErrors
+        )
+
+        return ResponseEntity.badRequest().body(errorResponse)
+    }
+
+    @ExceptionHandler(Exception::class)
+    fun handleGlobalException(ex: Exception, exchange: ServerWebExchange): ResponseEntity<ErrorResponse> {
+        val path = exchange.request.path.value()
+        logger.error("Unexpected error occurred for path $path", ex)
 
         val errorResponse = ErrorResponse(
             status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = "Internal Server Error",
-            message = ex.message ?: "An unexpected error occurred",
-            path = exchange.request.uri.path
+            error = HttpStatus.INTERNAL_SERVER_ERROR.reasonPhrase,
+            message = ex.message ?: "Internal server error",
+            path = path
         )
 
-        response.statusCode = HttpStatus.INTERNAL_SERVER_ERROR
-        response.headers.add("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-
-        logger.error("Gateway error: ${ex.message}", ex)
-
-        return try {
-            val json = objectMapper.writeValueAsString(errorResponse)
-            val dataBuffer = dataBufferFactory.wrap(json.toByteArray())
-            response.writeWith(Mono.just(dataBuffer))
-        } catch (e: JsonProcessingException) {
-            logger.error("Error writing response", e)
-            response.setComplete()
-        }
+        return ResponseEntity.internalServerError().body(errorResponse)
     }
 }

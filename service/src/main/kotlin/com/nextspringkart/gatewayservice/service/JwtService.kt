@@ -15,13 +15,13 @@ class JwtService(
     private val secret: String,
 
     @Value("\${jwt.expiration}")
-    private val expiration: Long
-) {
-    private val algorithm: MacAlgorithm = Jwts.SIG.HS256
+    private val expiration: Long,
+
+    private val algorithm: MacAlgorithm = Jwts.SIG.HS256,
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray())
+) {
 
-
-    private fun createToken(claims: MutableMap<String, Any>?, subject: String): String {
+    fun createToken(claims: MutableMap<String, Any>, subject: String): String {
         val now = Date()
         val expiryDate = Date(now.time + expiration)
 
@@ -54,15 +54,15 @@ class JwtService(
 
     fun extractRoles(token: String): List<String> {
         val claims = extractAllClaims(token)
-        val rolesString = claims["roles"] as? String ?: ""
-        return if (rolesString.isNotEmpty()) {
-            rolesString.split(",")
-        } else {
-            emptyList()
+        val roles = claims["roles"]
+        return when (roles) {
+            is List<*> -> roles.filterIsInstance<String>()
+            is String -> roles.split(",")
+            else -> emptyList()
         }
     }
 
-    fun extractUserId(token: String) = extractClaim(token) { it["userId"] as Long }
+    fun extractUserId(token: String) = extractClaim(token) { it["userId"] as String }
     fun extractRole(token: String) = extractClaim(token) { it["role"] as String }
     fun extractUsername(token: String): String? = extractClaim(token, Claims::getSubject)
     fun getExpirationTime() = expiration

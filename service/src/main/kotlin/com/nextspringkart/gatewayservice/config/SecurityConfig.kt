@@ -16,9 +16,7 @@ class SecurityConfig {
             .csrf { it.disable() }
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
-            .authorizeExchange { exchanges ->
-                exchanges.anyExchange().permitAll()
-            }
+            .authorizeExchange { exchanges -> exchanges.anyExchange().permitAll() }
             .build()
     }
 }
