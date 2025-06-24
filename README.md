@@ -1,4 +1,4 @@
-    updated on: 15th June 2025, Sunday
+    updated on: 24th June 2025, Tuesday
 
 <div align=center>
     <a href="https://github.com/next-spring-kart/gateway-service">
@@ -135,4 +135,4 @@
 
 [License]: https://github.com/next-spring-kart/gateway-service/blob/main/LICENSE
 
-<!-- 15/06/25 -->
+<!-- 24/06/25 -->
